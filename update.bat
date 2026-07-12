@@ -1,4 +1,11 @@
 @echo off
+:: โค้ดส่วนนี้จะเช็คว่าเปิดใน Windows Terminal หรือยัง
+if "%WT_SESSION%"=="" (
+    "C:\Users\9ter\AppData\Local\Microsoft\WindowsApps\wt.exe" -d "%~dp0." cmd /c "%~f0"
+    exit
+)
+
+:: --- เริ่มการทำงานของโปรแกรม ---
 chcp 65001 >nul
 color 0a
 title GitHub Sync - Line Idle Manager
