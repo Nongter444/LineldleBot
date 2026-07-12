@@ -429,7 +429,9 @@ class LineIdleBot(TkWrapper):
                 
                 game_path = f"/data/data/{GAME_PKG}/shared_prefs/trident.preferences.xml"
                 temp_sd = f"{TEMP_SD_PATH}/temp_backup.xml"
-                temp_local = f"{LOCAL_BACKUP_PATH}/temp_{dev}_{int(time.time())}.xml"
+                # แปลงเครื่องหมาย : ในตัวแปร dev ให้เป็น _ ก่อนนำไปตั้งชื่อไฟล์
+                safe_dev = dev.replace(":", "_")
+                temp_local = f"{LOCAL_BACKUP_PATH}/temp_{safe_dev}_{int(time.time())}.xml"
                 
                 # 2. ใช้คำสั่ง Root (su) ดันไฟล์ออกมาที่ sdcard และปลดสิทธิ์ไฟล์
                 self.adb_cmd(f"mkdir -p {TEMP_SD_PATH}", dev)
