@@ -339,7 +339,7 @@ class LineIdleBot(TkWrapper):
                     self.log(f"[{dev}] 📂 ยัดไอดี {file_basename} และเปิดเกมแล้ว")
 
                     # 3. ลูปมอนิเตอร์หน้าจอ
-                    monitor_timeout = 60 # รอสูงสุดประมาณ 60 วินาที ต่อการเช็ค
+                    monitor_timeout = 240 # รอสูงสุดประมาณ 60 วินาที ต่อการเช็ค
                     done_this_file = False
                     
                     for _ in range(monitor_timeout):
@@ -352,14 +352,124 @@ class LineIdleBot(TkWrapper):
                             continue
                         
                         # ==============================================
-                        # 💎 เช็ค Gem: ถ้าเจอ ปิดเกมข้ามไปไฟล์ต่อไปเลย
+                        # 💎 เช็ค Gem: สเต็ปเคลียร์รายวัน
                         # ==============================================
                         if ImgSearchADB(cap, "gem.png"):
-                            self.log(f"[{dev}] 💎 เจอ gem.png -> ปิดเกมและข้ามไปไฟล์ต่อไป!")
+                            self.log(f"[{dev}] 💎 เจอ gem.png -> เริ่มสเต็ปเคลียร์รายวัน")
+                            
+                            # 1. ★ ดักรอ claim.png ก่อน (รอสูงสุด 10 วินาที เพราะมันเด้งช้า) ★
+                            self.log(f"[{dev}] ดักรอป๊อปอัป claim.png (10 วิ)...")
+                            for _ in range(10):
+                                cap_claim = screencap_from_device(dev)
+                                if cap_claim is None:
+                                    time.sleep(1)
+                                    continue
+                                
+                                pts_claim = ImgSearchADB(cap_claim, "claim.png")
+                                if not pts_claim: 
+                                    pts_claim = ImgSearchADB(cap_claim, "Claim.png")
+                                    
+                                if pts_claim:
+                                    self.log(f"[{dev}] เจอ claim.png -> กดรับ")
+                                    self.adb_cmd(f"input tap {pts_claim[0][0]} {pts_claim[0][1]}", dev)
+                                    time.sleep(1.5)
+                                    
+                                    # ค้นหา x.png หรือ x2.png เพื่อปิดป๊อปอัป
+                                    cap_x = screencap_from_device(dev)
+                                    pts_x = ImgSearchADB(cap_x, "x.png")
+                                    if not pts_x:
+                                        pts_x = ImgSearchADB(cap_x, "x2.png")
+                                        
+                                    if pts_x:
+                                        self.adb_cmd(f"input tap {pts_x[0][0]} {pts_x[0][1]}", dev)
+                                        time.sleep(1)
+                                    break # กด claim และ x เสร็จแล้ว ให้ออกจากลูปรอทันที
+                                time.sleep(1) # ถ้ายังไม่เด้ง รอ 1 วิแล้วหาใหม่
+
+                            # 2. ★ หน้าจอโล่งแล้ว ค่อยมาค้นหา v.png และกดจนกว่าจะเจอ v2.png ★
+                            self.log(f"[{dev}] ค้นหา v.png และรอ v2.png ...")
+                            v2_found = False
+                            for _ in range(15): # วนหาซัก 15 รอบ
+                                cap_v = screencap_from_device(dev)
+                                if cap_v is None:
+                                    time.sleep(1)
+                                    continue
+                                
+                                pts_v2 = ImgSearchADB(cap_v, "v2.png")
+                                if pts_v2:
+                                    self.log(f"[{dev}] เจอ v2.png -> กดที่รูป")
+                                    self.adb_cmd(f"input tap {pts_v2[0][0]} {pts_v2[0][1]}", dev)
+                                    v2_found = True
+                                    time.sleep(2) # รอให้หน้าจอถัดไปโหลด
+                                    break
+                                
+                                pts_v = ImgSearchADB(cap_v, "v.png")
+                                if pts_v:
+                                    self.adb_cmd(f"input tap {pts_v[0][0]} {pts_v[0][1]}", dev)
+                                
+                                time.sleep(1)
+
+                            # 3. ★ รอและดำเนินการหน้า daily.png (หลังจากกด v2.png แล้ว) ★
+                            if v2_found:
+                                self.log(f"[{dev}] รอโหลดป๊อปอัป daily.png ...")
+                                for _ in range(10): # ดักรอ daily.png สูงสุด 10 วิ
+                                    cap_daily = screencap_from_device(dev)
+                                    if cap_daily is None:
+                                        time.sleep(1)
+                                        continue
+                                        
+                                    if ImgSearchADB(cap_daily, "daily.png"):
+                                        self.log(f"[{dev}] เจอ daily.png -> กด 8 จุด")
+                                        points = [
+                                            (127, 525), (223, 528), (313, 527), (418, 527),
+                                            (131, 669), (224, 669), (320, 669), (410, 668)
+                                        ]
+                                        for px, py in points:
+                                            self.adb_cmd(f"input tap {px} {py}", dev)
+                                            time.sleep(0.2)
+                                        
+                                        time.sleep(1)
+                                        
+                                        # ค้นหา spec.png
+                                        cap_spec = screencap_from_device(dev)
+                                        pts_spec = ImgSearchADB(cap_spec, "spec.png")
+                                        if pts_spec:
+                                            self.log(f"[{dev}] เจอ spec.png -> กดที่รูป")
+                                            self.adb_cmd(f"input tap {pts_spec[0][0]} {pts_spec[0][1]}", dev)
+                                            time.sleep(2)
+                                            
+                                            # รอหาหน้า spec2.png
+                                            for _ in range(5):
+                                                cap_spec2 = screencap_from_device(dev)
+                                                if ImgSearchADB(cap_spec2, "spec2.png"):
+                                                    self.log(f"[{dev}] เจอ spec2.png -> กด 8 จุด (รอบสอง)")
+                                                    for px, py in points:
+                                                        self.adb_cmd(f"input tap {px} {py}", dev)
+                                                        time.sleep(0.2)
+                                                    break
+                                                time.sleep(1)
+                                        break # ทำสเต็ป daily.png เสร็จแล้ว ให้ออกจากลูปรอทันที
+                                    
+                                    time.sleep(1)
+
+                            # 4. เสร็จสิ้นกระบวนการทั้งหมด ปิดเกมและข้ามไปไฟล์ถัดไป
+                            self.log(f"[{dev}] ✅ จบไอดี (เคลียร์เรียบร้อย) -> ปิดเกมและข้ามไปไฟล์ต่อไป!")
                             self.adb_cmd(f"am force-stop {GAME_PKG}", dev)
                             done_this_file = True
                             break # หลุดออกจาก for loop มอนิเตอร์หน้าจอ ไปดึงไฟล์คิวอันใหม่
-                        
+                        # --- เช็ค guest ---
+                        if ImgSearchADB(cap, "glogin.png"):
+                            # 1. เช็ค ok.png ก่อนตามเงื่อนไข
+                            pts_ok = ImgSearchADB(cap, "ok.png")
+                            pts_ok2 = ImgSearchADB(cap, "ok2.png")
+                            if pts_ok:
+                                self.log(f"[{dev}] เจอ ok.png พร้อม login.png -> กด ok.png ก่อน")
+                                self.adb_cmd(f"input tap {pts_ok[0][0]} {pts_ok[0][1]}", dev)
+                                time.sleep(1.5) # หน่วงเวลารอแอนิเมชันหลังกด ok
+                            elif pts_ok2:
+                                self.log(f"[{dev}] เจอ ok2.png พร้อม login.png -> กด ok2.png ก่อน")
+                                self.adb_cmd(f"input tap {pts_ok2[0][0]} {pts_ok2[0][1]}", dev)
+                                time.sleep(1.5) # หน่วงเวลารอแอนิเมชันหลังกด
                         # --- เช็ค Login ---
                         if ImgSearchADB(cap, "login.png"):
                             self.log(f"[{dev}] เจอ login.png -> กด 3 ตำแหน่ง")
@@ -383,20 +493,7 @@ class LineIdleBot(TkWrapper):
                             time.sleep(2)
                             continue 
                         
-                        # --- เช็ค Claim ---
-                        pts_claim = ImgSearchADB(cap, "Claim.png")
-                        if pts_claim:
-                            self.log(f"[{dev}] เจอ Claim.png -> กดรับ")
-                            self.adb_cmd(f"input tap {pts_claim[0][0]} {pts_claim[0][1]}", dev)
-                            time.sleep(2)
-                            
-                            self.log(f"[{dev}] ✅ จบไอดี {file_basename} ปิดเกมและข้ามไปไฟล์ต่อไป!")
-                            self.adb_cmd(f"am force-stop {GAME_PKG}", dev) 
-                            
-                            done_this_file = True
-                            break 
-
-                        time.sleep(1)
+                    
                         
                     if not done_this_file:
                         self.log(f"[{dev}] ⚠️ หมดเวลา/ไม่เจอ Claim สำหรับไอดี {file_basename}")
